@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ocean Depths - Aquatic Life Explorer</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(180deg, #001133 0%, #002244 50%, #003366 100%);
+            color: #ffffff;
+            overflow-x: hidden;
+        }
+
+        .container {
+            position: relative;
+            z-index: 10;
+        }
+
+        header {
+            text-align: center;
+            padding: 2rem;
+            background: rgba(0, 20, 40, 0.8);
+            backdrop-filter: blur(10px);
+        }
+
+        h1 {
+            font-size: 3rem;
+            background: linear-gradient(45deg, #00ccff, #0099cc, #66ddff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 0.5rem;
+            text-shadow: 0 0 20px rgba(0, 204, 255, 0.5);
+        }
+
+        .subtitle {
+            font-size: 1.2rem;
+            color: #88ccff;
+            margin-bottom: 2rem;
+        }
+
+        #three-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100vh;
+            z-index: 1;
+        }
+
+        .content-section {
+            position: relative;
+            z-index: 10;
+            margin: 2rem auto;
+            max-width: 1200px;
+            padding: 2rem;
+            background: rgba(0, 30, 60, 0.9);
+            backdrop-filter: blur(15px);
+            border-radius: 20px;
+            border: 1px solid rgba(102, 221, 255, 0.3);
+            box-shadow: 0 8px 32px rgba(0, 204, 255, 0.1);
+        }
+
+        .species-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            margin-top: 2rem;
+        }
+
+        .species-card {
+            background: rgba(0, 40, 80, 0.8);
+            border-radius: 15px;
+            padding: 1.5rem;
+            border: 1px solid rgba(102, 221, 255, 0.2);
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+        }
+
+        .species-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 15px 40px rgba(0, 204, 255, 0.2);
+            border-color: rgba(102, 221, 255, 0.5);
+        }
+
+        .species-title {
+            font-size: 1.5rem;
+            color: #00ccff;
+            margin-bottom: 0.5rem;
+            text-shadow: 0 0 10px rgba(0, 204, 255, 0.3);
+        }
+
+        .species-description {
+            color: #ccddff;
+            line-height: 1.6;
+            margin-bottom: 1rem;
+        }
+
+        .species-facts {
+            background: rgba(0, 20, 40, 0.6);
+            border-radius: 10px;
+            padding: 1rem;
+            border-left: 3px solid #00ccff;
+        }
+
+        .fact-item {
+            color: #99ddff;
+            margin-bottom: 0.5rem;
+        }
+
+        .depth-indicator {
+            position: fixed;
+            right: 2rem;
+            top: 50%;
+            transform: translateY(-50%);
+            z-index: 20;
+            background: rgba(0, 30, 60, 0.9);
+            padding: 1rem;
+            border-radius: 10px;
+            border: 1px solid rgba(102, 221, 255, 0.3);
+        }
+
+        .depth-meter {
+            width: 10px;
+            height: 200px;
+            background: linear-gradient(to bottom, #00ccff, #0066cc, #003366);
+            border-radius: 5px;
+            position: relative;
+        }
+
+        .depth-marker {
+            position: absolute;
+            width: 20px;
+            height: 4px;
+            background: #ffcc00;
+            border-radius: 2px;
+            right: -5px;
+            transition: top 0.3s ease;
+        }
+
+        .controls {
+            position: fixed;
+            bottom: 2rem;
+            left: 2rem;
+            z-index: 20;
+            display: flex;
+            gap: 1rem;
+        }
+
+        .control-btn {
+            background: rgba(0, 204, 255, 0.2);
+            border: 1px solid #00ccff;
+            color: #00ccff;
+            padding: 0.8rem 1.5rem;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+        }
+
+        .control-btn:hover {
+            background: rgba(0, 204, 255, 0.3);
+            box-shadow: 0 0 20px rgba(0, 204, 255, 0.4);
+        }
+
+        .floating-particles {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 5;
+        }
+
+        .particle {
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            background: rgba(102, 221, 255, 0.6);
+            border-radius: 50%;
+            animation: float 6s infinite ease-in-out;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(100vh) translateX(0px); opacity: 0; }
+            10% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { transform: translateY(-20px) translateX(50px); opacity: 0; }
+        }
+
+        .wave-animation {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 100px;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 120" preserveAspectRatio="none"><path d="M0,60 Q300,0 600,60 T1200,60 L1200,120 L0,120 Z" fill="rgba(0,204,255,0.1)"/></svg>');
+            animation: wave 8s ease-in-out infinite;
+            z-index: 2;
+        }
+
+        @keyframes wave {
+            0%, 100% { transform: translateX(0); }
+            50% { transform: translateX(-50px); }
+        }
+    </style>
+</head>
+<body>
+    <div id="three-container"></div>
+    
+    <div class="floating-particles" id="particles"></div>
+    <div class="wave-animation"></div>
+    
+    <div class="container">
+        <header>
+            <h1>Ocean Depths</h1>
+            <p class="subtitle">Explore the Mysteries of Aquatic Life</p>
+        </header>
+
+        <div class="content-section">
+            <h2 style="color: #00ccff; text-align: center; margin-bottom: 2rem; font-size: 2rem;">Marine Life Zones</h2>
+            
+            <div class="species-grid">
+                <div class="species-card">
+                    <h3 class="species-title">🐠 Tropical Fish</h3>
+                    <p class="species-description">
+                        Vibrant and diverse, tropical fish inhabit warm coastal waters and coral reefs, 
+                        displaying brilliant colors and intricate patterns that serve both as camouflage and communication.
+                    </p>
+                    <div class="species-facts">
+                        <div class="fact-item">• Depth Range: 0-200 meters</div>
+                        <div class="fact-item">• Temperature: 24-30°C</div>
+                        <div class="fact-item">• Over 4,000 species worldwide</div>
+                    </div>
+                </div>
+
+                <div class="species-card">
+                    <h3 class="species-title">🦈 Sharks</h3>
+                    <p class="species-description">
+                        Ancient predators that have ruled the oceans for over 400 million years, 
+                        sharks are perfectly adapted hunters with incredible sensory abilities.
+                    </p>
+                    <div class="species-facts">
+                        <div class="fact-item">• Depth Range: 0-4,000 meters</div>
+                        <div class="fact-item">• 500+ species exist</div>
+                        <div class="fact-item">• Can detect electrical fields</div>
+                    </div>
+                </div>
+
+                <div class="species-card">
+                    <h3 class="species-title">🐙 Deep Sea Octopus</h3>
+                    <p class="species-description">
+                        Masters of camouflage and intelligence, deep-sea octopuses navigate the dark 
+                        abyss with remarkable problem-solving abilities and shape-shifting skills.
+                    </p>
+                    <div class="species-facts">
+                        <div class="fact-item">• Depth Range: 200-7,000 meters</div>
+                        <div class="fact-item">• 8 arms with independent movement</div>
+                        <div class="fact-item">• Can change color instantly</div>
+                    </div>
+                </div>
+
+                <div class="species-card">
+                    <h3 class="species-title">🐋 Whales</h3>
+                    <p class="species-description">
+                        The ocean's gentle giants, whales are intelligent marine mammals that communicate 
+                        through complex songs and migrate vast distances across the world's oceans.
+                    </p>
+                    <div class="species-facts">
+                        <div class="fact-item">• Depth Range: 0-2,000 meters</div>
+                        <div class="fact-item">• Largest animals on Earth</div>
+                        <div class="fact-item">• Complex social behaviors</div>
+                    </div>
+                </div>
+
+                <div class="species-card">
+                    <h3 class="species-title">🦀 Crustaceans</h3>
+                    <p class="species-description">
+                        From tiny shrimp to massive crabs, crustaceans are the arthropods of the sea, 
+                        playing crucial roles as both predators and prey in marine ecosystems.
+                    </p>
+                    <div class="species-facts">
+                        <div class="fact-item">• Depth Range: 0-11,000 meters</div>
+                        <div class="fact-item">• Exoskeleton for protection</div>
+                        <div class="fact-item">• 67,000+ species known</div>
+                    </div>
+                </div>
+
+                <div class="species-card">
+                    <h3 class="species-title">🌊 Bioluminescent Plankton</h3>
+                    <p class="species-description">
+                        Microscopic organisms that create stunning light shows in the ocean, 
+                        bioluminescent plankton are the foundation of marine food chains.
+                    </p>
+                    <div class="species-facts">
+                        <div class="fact-item">• Found at all depths</div>
+                        <div class="fact-item">• Produce their own light</div>
+                        <div class="fact-item">• Essential for marine ecosystems</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="depth-indicator">
+        <div class="depth-meter">
+            <div class="depth-marker" id="depthMarker"></div>
+        </div>
+        <p style="color: #00ccff; margin-top: 1rem; text-align: center;">Depth</p>
+    </div>
+
+    <div class="controls">
+        <button class="control-btn" onclick="toggleAnimation()">Pause/Play</button>
+        <button class="control-btn" onclick="changeScene()">Change Scene</button>
+    </div>
+
+    <script>
+        // Three.js Setup
+        let scene, camera, renderer, fish = [], coral = [], animationId;
+        let animationPaused = false;
+
+        function init() {
+            // Scene setup
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setClearColor(0x001122, 0.3);
+            document.getElementById('three-container').appendChild(renderer.domElement);
+
+            // Lighting
+            const ambientLight = new THREE.AmbientLight(0x004080, 0.6);
+            scene.add(ambientLight);
+
+            const directionalLight = new THREE.DirectionalLight(0x00ccff, 0.8);
+            directionalLight.position.set(10, 10, 5);
+            scene.add(directionalLight);
+
+            // Create fish
+            createFish();
+            createCoral();
+            createSeabed();
+
+            // Camera position
+            camera.position.z = 20;
+            camera.position.y = 2;
+
+            animate();
+        }
+
+        function createFish() {
+            const fishGeometry = new THREE.ConeGeometry(0.3, 1.2, 6);
+            const colors = [0xff6b35, 0xf7931e, 0xffcc02, 0x00ccff, 0xff69b4, 0x32cd32];
+
+            for (let i = 0; i < 15; i++) {
+                const fishMaterial = new THREE.MeshPhongMaterial({ 
+                    color: colors[Math.floor(Math.random() * colors.length)],
+                    shininess: 100 
+                });
+                const fishMesh = new THREE.Mesh(fishGeometry, fishMaterial);
+                
+                fishMesh.position.x = (Math.random() - 0.5) * 40;
+                fishMesh.position.y = (Math.random() - 0.5) * 20;
+                fishMesh.position.z = (Math.random() - 0.5) * 30;
+                
+                fishMesh.userData = {
+                    speedX: (Math.random() - 0.5) * 0.02,
+                    speedY: (Math.random() - 0.5) * 0.01,
+                    speedZ: (Math.random() - 0.5) * 0.02,
+                    rotationSpeed: (Math.random() - 0.5) * 0.05
+                };
+                
+                scene.add(fishMesh);
+                fish.push(fishMesh);
+            }
+        }
+
+        function createCoral() {
+            for (let i = 0; i < 8; i++) {
+                const coralGeometry = new THREE.CylinderGeometry(0.1, 0.5, 2, 8);
+                const coralMaterial = new THREE.MeshPhongMaterial({ 
+                    color: Math.random() > 0.5 ? 0xff6347 : 0xff1493 
+                });
+                const coralMesh = new THREE.Mesh(coralGeometry, coralMaterial);
+                
+                coralMesh.position.x = (Math.random() - 0.5) * 50;
+                coralMesh.position.y = -8 + Math.random() * 3;
+                coralMesh.position.z = (Math.random() - 0.5) * 40;
+                coralMesh.rotation.x = (Math.random() - 0.5) * 0.5;
+                coralMesh.rotation.z = (Math.random() - 0.5) * 0.5;
+                
+                scene.add(coralMesh);
+                coral.push(coralMesh);
+            }
+        }
+
+        function createSeabed() {
+            const seabedGeometry = new THREE.PlaneGeometry(100, 100, 20, 20);
+            const seabedMaterial = new THREE.MeshPhongMaterial({ 
+                color: 0x8b7355,
+                transparent: true,
+                opacity: 0.7 
+            });
+            const seabedMesh = new THREE.Mesh(seabedGeometry, seabedMaterial);
+            seabedMesh.rotation.x = -Math.PI / 2;
+            seabedMesh.position.y = -10;
+            scene.add(seabedMesh);
+
+            // Add some randomness to seabed vertices
+            const vertices = seabedGeometry.attributes.position.array;
+            for (let i = 0; i < vertices.length; i += 3) {
+                vertices[i + 2] = Math.random() * 2;
+            }
+            seabedGeometry.attributes.position.needsUpdate = true;
+        }
+
+        function animate() {
+            if (!animationPaused) {
+                animationId = requestAnimationFrame(animate);
+
+                // Animate fish
+                fish.forEach(fishMesh => {
+                    fishMesh.position.x += fishMesh.userData.speedX;
+                    fishMesh.position.y += fishMesh.userData.speedY;
+                    fishMesh.position.z += fishMesh.userData.speedZ;
+                    
+                    fishMesh.rotation.y += fishMesh.userData.rotationSpeed;
+                    
+                    // Boundary checking
+                    if (Math.abs(fishMesh.position.x) > 25) fishMesh.userData.speedX *= -1;
+                    if (Math.abs(fishMesh.position.y) > 12) fishMesh.userData.speedY *= -1;
+                    if (Math.abs(fishMesh.position.z) > 20) fishMesh.userData.speedZ *= -1;
+                });
+
+                // Gentle coral sway
+                coral.forEach((coralMesh, index) => {
+                    coralMesh.rotation.x = Math.sin(Date.now() * 0.001 + index) * 0.1;
+                });
+
+                // Update depth marker
+                const scrollPercent = window.pageYOffset / (document.documentElement.scrollHeight - window.innerHeight);
+                const depthMarker = document.getElementById('depthMarker');
+                if (depthMarker) {
+                    depthMarker.style.top = `${scrollPercent * 190}px`;
+                }
+
+                renderer.render(scene, camera);
+            }
+        }
+
+        function toggleAnimation() {
+            animationPaused = !animationPaused;
+            if (!animationPaused) animate();
+        }
+
+        function changeScene() {
+            // Change lighting color
+            const colors = [0x004080, 0x800040, 0x008040, 0x404000];
+            const randomColor = colors[Math.floor(Math.random() * colors.length)];
+            scene.children.find(child => child.type === 'AmbientLight').color.setHex(randomColor);
+        }
+
+        // Create floating particles
+        function createParticles() {
+            const particleContainer = document.getElementById('particles');
+            for (let i = 0; i < 30; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'particle';
+                particle.style.left = Math.random() * 100 + '%';
+                particle.style.animationDelay = Math.random() * 6 + 's';
+                particle.style.animationDuration = (Math.random() * 4 + 4) + 's';
+                particleContainer.appendChild(particle);
+            }
+        }
+
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // Initialize everything
+        window.addEventListener('load', () => {
+            init();
+            createParticles();
+        });
+
+        // Add scroll effect to camera
+        window.addEventListener('scroll', () => {
+            const scrollPercent = window.pageYOffset / window.innerHeight;
+            camera.position.y = 2 - scrollPercent * 5;
+            camera.rotation.x = scrollPercent * 0.3;
+        });
+    </script>
+</body>
+</html>
